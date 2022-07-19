@@ -1,0 +1,49 @@
+"""
+source
+https://github.com/fangpin/siamese-pytorch/blob/master/model.py
+"""
+
+import torch
+import torch.nn as nn
+
+
+class Siamese(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # napisanie roznych enkodeorw
+        self.conv = nn.Sequential(
+            nn.Conv2d(3, 64, 10),  # 64@96*96
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),  # 64@48*48
+            nn.Conv2d(64, 128, 7),
+            nn.ReLU(),  # 128@42*42
+            nn.MaxPool2d(2),  # 128@21*21
+            nn.Conv2d(128, 128, 4),
+            nn.ReLU(),  # 128@18*18
+            nn.MaxPool2d(2),  # 128@9*9
+            nn.Conv2d(128, 256, 4),
+            nn.ReLU(),  # 256@6*6
+        )
+        self.liner = nn.Sequential(nn.Linear(6400, 4096), nn.Sigmoid())
+        self.out = nn.Linear(4096, 1)
+
+    def forward_one(self, x):
+        x = self.conv(x)
+        x = x.view(x.size()[0], -1)
+        x = self.liner(x)
+        return x
+
+    def forward(self, x1, x2):
+        out1 = self.forward_one(x1)
+        out2 = self.forward_one(x2)
+        dis = torch.abs(out1 - out2)
+        out = self.out(dis)
+        #  return self.sigmoid(out)
+        return out, dis
+
+
+if __name__ == "__main__":
+    input_tensor = torch.rand([1, 3, 100, 100])
+    model = Siamese()
+    output_tensor1, output_tensor2 = model.forward(input_tensor, input_tensor)
+    print(output_tensor1.shape, output_tensor2.shape)
